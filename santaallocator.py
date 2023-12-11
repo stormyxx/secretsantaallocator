@@ -6,7 +6,7 @@ from model import User, Allocation
 
 
 class LocalSearchAllocator:
-    def __init__(self, steps=1000, max_options=50, n=5, verbose=False):
+    def __init__(self, steps=1000, max_options=50, n=5):
         """
         Initializes an assignment allocator that uses Local Search.
 
@@ -17,7 +17,6 @@ class LocalSearchAllocator:
         self.steps = steps
         self.max_options = max_options
         self.n = n
-        self.verbose = verbose
 
     def allocate(self, participants: List[User]) -> List[Allocation]:
         num_categories = len({item for participant in participants for item in participant.can_receive})
