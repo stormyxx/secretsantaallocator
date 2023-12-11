@@ -6,38 +6,51 @@ from model import User, Allocation
 
 
 class LocalSearchAllocator:
-    def __init__(self, steps=1000, max_options=50, n=5):
+    def __init__(self, steps=1000, max_options=50, n=5, verbose=False):
+        """
+        Initializes an assignment allocator that uses Local Search.
+
+        :param steps: the number of improvement steps to take for each iteration
+        :param max_options: the number of alternative options to consider for each improvement step
+        :param n: the number of iterations of local search to do. the iteration with the best final score is used.
+        """
         self.steps = steps
         self.max_options = max_options
         self.n = n
-        ...
+        self.verbose = verbose
 
     def allocate(self, participants: List[User]) -> List[Allocation]:
         num_categories = len({item for participant in participants for item in participant.can_receive})
-        best_allocations, best_score = None, float('-inf')
-        for _ in range(self.n):
+        best_allocations, best_score = None, float("-inf")
+        for n in range(self.n):
             curr_score = 0
             allocations: Dict[User, User] = {}
 
             # randomly allocate initial allocations
             shuffled_participants = random.sample(participants, len(participants))
-            while any(giver == reciever for giver, reciever in zip(participants, shuffled_participants)):
+            while any(giver == receiver for giver, receiver in zip(participants, shuffled_participants)):
                 shuffled_participants = random.sample(participants, len(participants))
             for giver, receiver in zip(participants, shuffled_participants):
                 allocations[giver] = receiver
                 curr_score += _calculate_allocation_score(giver, receiver, num_categories)
 
+            # makes self.steps local search improvements
             for _ in range(self.steps):
                 target_participant = random.choice(participants)
                 potential_swaps = random.sample(participants, min(len(participants), self.max_options))
                 potential_scores = [
-                    _calculate_allocation_score(giver=target_participant, receiver=allocations[pot_participant], num_categories=num_categories)
-                    + _calculate_allocation_score(giver=pot_participant, receiver=allocations[target_participant], num_categories=num_categories)
+                    _calculate_allocation_score(
+                        giver=target_participant, receiver=allocations[pot_participant], num_categories=num_categories
+                    )
+                    + _calculate_allocation_score(
+                        giver=pot_participant, receiver=allocations[target_participant], num_categories=num_categories
+                    )
                     for pot_participant in potential_swaps
                 ]
                 swap_target, swapped_score = _argmax(potential_swaps, potential_scores)
-                old_score = _calculate_allocation_score(target_participant, allocations[target_participant], num_categories) \
-                            + _calculate_allocation_score(swap_target, allocations[swap_target], num_categories)
+                old_score = _calculate_allocation_score(
+                    target_participant, allocations[target_participant], num_categories
+                ) + _calculate_allocation_score(swap_target, allocations[swap_target], num_categories)
                 if swapped_score > old_score:
                     old_allocations = allocations.copy()
                     curr_score = curr_score + swapped_score - old_score
@@ -53,16 +66,16 @@ class LocalSearchAllocator:
 @cache
 def _calculate_allocation_score(giver: User, receiver: User, num_categories: int) -> float:
     if giver == receiver:
-        return float('-inf')
+        return float("-inf")
     else:
-        return -(num_categories - len(set(giver.can_give).intersection(set(receiver.can_receive)))) ** 2
+        return -((num_categories - len(set(giver.can_give).intersection(set(receiver.can_receive)))) ** 2)
 
 
-_T = TypeVar('_T')
+_T = TypeVar("_T")
 
 
 def _argmax(entities: Iterable[_T], scores: Iterable[int]) -> Tuple[_T, int]:
-    max_score = float('-inf')
+    max_score = float("-inf")
     best_entity = None
     for entity, score in zip(entities, scores):
         if score > max_score:
@@ -71,16 +84,15 @@ def _argmax(entities: Iterable[_T], scores: Iterable[int]) -> Tuple[_T, int]:
     return best_entity, max_score
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     users = [
-        User('foo', can_give=('art', 'writing'), can_receive=('art',)),
-        User('baz', can_give=('writing',), can_receive=('writing',)),
-        User('qux', can_give=('art', 'writing', 'music'), can_receive=('art', 'writing', 'music')),
-        User('quux', can_give=('art', 'music'), can_receive=('art',))
+        User("foo", can_give=("art", "writing"), can_receive=("art",)),
+        User("baz", can_give=("writing",), can_receive=("writing",)),
+        User("qux", can_give=("art", "writing", "music"), can_receive=("art", "writing", "music")),
+        User("quux", can_give=("art", "music"), can_receive=("art",)),
     ]
 
     lsa = LocalSearchAllocator()
     allocations = lsa.allocate(users)
-    print('------')
     for allocation in allocations:
         print(allocation)
